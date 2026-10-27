@@ -83,7 +83,7 @@ export const cargarPagina = async (pagina = 1) => {
 };
 
 /**
- * TODO [F4] Eliminación con manejo de reglas de negocio.
+ * Eliminación con manejo de reglas de negocio.
  *
  * Use DELEGACIÓN DE EVENTOS: un solo listener en $lista que detecte clics en .btn-eliminar.
  *  - Pida confirmación con confirm().
@@ -94,7 +94,29 @@ export const cargarPagina = async (pagina = 1) => {
  *  - Otro error: muestre un mensaje general.
  */
 const alHacerClicEnLista = async (evento) => {
-  // TODO
+  const boton = evento.target.closest(".btn-eliminar");
+  if (!boton || !$lista.contains(boton)) return;
+
+  const tarjeta = boton.closest("li[data-id]");
+  if (!tarjeta || !confirm("¿Desea eliminar este equipo?")) return;
+
+  try {
+    await eliminarEquipo(tarjeta.dataset.id);
+    mostrarMensaje("exito", "Equipo eliminado.");
+
+    const paginaDestino = paginaActual > 1
+      && $lista.querySelectorAll("li[data-id]").length === 1
+      ? paginaActual - 1
+      : paginaActual;
+
+    await cargarPagina(paginaDestino);
+  } catch (error) {
+    if (error.status === 409) {
+      mostrarMensaje("error", error.datos.mensaje);
+    } else {
+      mostrarMensaje("error", "No fue posible eliminar el equipo.");
+    }
+  }
 };
 
 // Parcialmente implementado: complete el TODO de los botones de paginación.
