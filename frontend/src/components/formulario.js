@@ -6,7 +6,7 @@ const $selectCategoria = document.querySelector("#categoria_id");
 const $btnGuardar = document.querySelector("#btn-guardar");
 
 /**
- * TODO [F3] Formulario de registro de equipos.
+ * Formulario de registro de equipos.
  *
  * iniciarFormulario({ alGuardar }):
  *  1. Llene el <select id="categoria_id"> con listarCategorias()
@@ -25,5 +25,61 @@ const $btnGuardar = document.querySelector("#btn-guardar");
  *     - Siempre (finally): rehabilite el botón y restaure su texto.
  */
 export const iniciarFormulario = ({ alGuardar }) => {
-  // TODO
+  const textoBoton = $btnGuardar.textContent;
+
+  $form.addEventListener("submit", async (evento) => {
+    evento.preventDefault();
+
+    $form.querySelectorAll("[data-error]").forEach(($error) => {
+      $error.textContent = "";
+    });
+    $form.querySelectorAll("[aria-invalid]").forEach(($campo) => {
+      $campo.removeAttribute("aria-invalid");
+    });
+
+    const formData = new FormData($form);
+    const datos = Object.fromEntries(formData.entries());
+    datos.categoria_id = Number(datos.categoria_id);
+    datos.costo_interno = Number(datos.costo_interno);
+
+    $btnGuardar.disabled = true;
+    $btnGuardar.textContent = "Guardando…";
+
+    try {
+      const equipo = await crearEquipo(datos);
+
+      $form.reset();
+      mostrarMensaje("exito", `Equipo ${equipo.data.codigo} registrado.`);
+      await alGuardar();
+    } catch (error) {
+      if (error.status === 422) {
+        Object.entries(error.datos.errors ?? {}).forEach(([campo, mensajes]) => {
+          const $mensaje = Array.from($form.querySelectorAll("[data-error]"))
+            .find(($elemento) => $elemento.dataset.error === campo);
+          const $campo = $form.elements.namedItem(campo);
+
+          if ($mensaje && $campo instanceof HTMLElement) {
+            $mensaje.textContent = mensajes[0];
+            $campo.setAttribute("aria-invalid", "true");
+          }
+        });
+      } else {
+        mostrarMensaje("error", error.message);
+      }
+    } finally {
+      $btnGuardar.disabled = false;
+      $btnGuardar.textContent = textoBoton;
+    }
+  });
+
+  listarCategorias()
+    .then(({ data }) => {
+      data.forEach((categoria) => {
+        const opcion = document.createElement("option");
+        opcion.value = categoria.id;
+        opcion.textContent = categoria.nombre;
+        $selectCategoria.append(opcion);
+      });
+    })
+    .catch((error) => mostrarMensaje("error", error.message));
 };
