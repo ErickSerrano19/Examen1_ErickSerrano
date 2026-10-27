@@ -18,7 +18,7 @@ export const formatearFecha = (iso) =>
   new Date(`${iso}T00:00:00`).toLocaleDateString("es-CR", { day: "numeric", month: "short", year: "numeric" });
 
 /**
- * TODO [F2] Listado y paginación.
+ * Listado y paginación.
  *
  * cargarPagina(pagina):
  *  - Marque la lista como ocupada (aria-busy="true") mientras carga y desmárquela al terminar.
@@ -35,7 +35,51 @@ export const formatearFecha = (iso) =>
  *  - Si falla, muestre el error con mostrarMensaje("error", ...).
  */
 export const cargarPagina = async (pagina = 1) => {
-  // TODO
+  $lista.setAttribute("aria-busy", "true");
+
+  try {
+    const respuesta = await listarEquipos(pagina, POR_PAGINA);
+    const equipos = respuesta.data;
+    const meta = respuesta.meta;
+
+    $lista.replaceChildren();
+
+    if (equipos.length === 0) {
+      const vacio = document.createElement("li");
+      vacio.className = "vacio";
+      vacio.textContent = "No hay equipos registrados.";
+      $lista.append(vacio);
+    } else {
+      equipos.forEach((equipo) => {
+        const fragmento = $plantilla.content.cloneNode(true);
+        const $tarjeta = fragmento.querySelector("li");
+        const $estado = fragmento.querySelector(".estado");
+
+        $tarjeta.dataset.id = equipo.id;
+        fragmento.querySelector(".codigo").textContent = equipo.codigo;
+        fragmento.querySelector(".nombre").textContent = equipo.nombre;
+        fragmento.querySelector(".categoria").textContent = equipo.categoria?.nombre ?? "";
+        fragmento.querySelector(".fecha").textContent = equipo.fecha_adquisicion
+          ? formatearFecha(equipo.fecha_adquisicion)
+          : "";
+        $estado.textContent = equipo.estado;
+        $estado.dataset.estado = equipo.estado;
+
+        $lista.append(fragmento);
+      });
+    }
+
+    paginaActual = meta.current_page;
+    ultimaPagina = meta.last_page;
+    $resumen.textContent = `Mostrando ${meta.from ?? 0}–${meta.to ?? 0} de ${meta.total}`;
+    $paginaActual.textContent = `Página ${paginaActual} de ${ultimaPagina}`;
+    $btnAnterior.disabled = paginaActual <= 1;
+    $btnSiguiente.disabled = paginaActual >= ultimaPagina;
+  } catch (error) {
+    mostrarMensaje("error", error.message);
+  } finally {
+    $lista.setAttribute("aria-busy", "false");
+  }
 };
 
 /**
@@ -57,7 +101,8 @@ const alHacerClicEnLista = async (evento) => {
 export const iniciarListado = () => {
   $lista.addEventListener("click", alHacerClicEnLista);
 
-  // TODO [F2] Conecte #btn-anterior y #btn-siguiente con cargarPagina()
+  $btnAnterior.addEventListener("click", () => cargarPagina(paginaActual - 1));
+  $btnSiguiente.addEventListener("click", () => cargarPagina(paginaActual + 1));
 
   cargarPagina(1);
 };
